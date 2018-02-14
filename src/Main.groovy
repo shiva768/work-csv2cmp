@@ -1,3 +1,4 @@
+import org.codehaus.groovy.runtime.ResourceGroovyMethods
 
 import java.nio.charset.Charset
 import java.nio.charset.UnsupportedCharsetException
@@ -26,29 +27,41 @@ final Charset CHARSET = Charset.defaultCharset()
 def path = args[0]
 def inputCharset = args.length > 1 && parseCharset(args[1]) != null ? parseCharset(args[1]) : CHARSET
 def outputCharset = args.length > 2 && parseCharset(args[2]) != null ? parseCharset(args[2]) : CHARSET
-
 def inputFile = new File(path)
-def outputFileName = "conv_${inputFile.name}"
-def outputFile = new File("$inputFile.parent$FILE_SEPARATOR$outputFileName")
-def line = 0
+def processLine = 0
+def fileIndex = 1
 println "start ${LocalDateTime.now()}"
-outputFile.withWriter(outputCharset.name()) { writer ->
-
-    inputFile.eachLine(inputCharset.name(), HEADER_ROW) { it, lineNum ->
-        if (HEADER_ROW == lineNum) {
-            writer << it
+def reader = ResourceGroovyMethods.newReader(inputFile, inputCharset.name())
+def header = null
+reader.eachLine(HEADER_ROW) { it ->
+    def outputByte = 0L
+    def outputFileName = "conv${fileIndex++}_${inputFile.name}"
+    def outputFile = new File("$inputFile.parent$FILE_SEPARATOR$outputFileName")
+    outputFile.withWriter(outputCharset.name()) { writer ->
+        if (header == null)
+            header = it
+        reader.find { // break出来るeachみたいな扱い方
+            if (outputByte == 0L) {
+                writer << header
+                writer << LINE_SEPARATOR
+                outputByte += header.getBytes(inputCharset).length
+                return false
+            }
+            def tokenize = it.tokenize(",")
+            if (tokenize.every { it == null || it == "NULL" }) return false
+            def tmp = "$FIX_VAL_HEADER_FIRST_COL,${tokenize.get(COL_ID1)},{${tokenize.get(COL_ID3)}${TEMPLATE}"
+            writer << tmp
             writer << LINE_SEPARATOR
-            return
+            outputByte += tmp.getBytes(inputCharset).length
+            processLine++
+            if (processLine % 100 == 0)
+                println processLine
+            if (outputByte > 9437184L)  // 9MBを超えたら別ファイル
+                return true
         }
-        def tokenize = it.tokenize(",")
-        if (tokenize.every { it == null || it == "NULL" }) return
-        writer << "$FIX_VAL_HEADER_FIRST_COL,${tokenize.get(COL_ID1)},{${tokenize.get(COL_ID3)}${TEMPLATE}"
-        writer << LINE_SEPARATOR
-        line++
-        if (line % 100 == 0)
-            println line
     }
 }
+
 println "end ${LocalDateTime.now()}"
 
 
