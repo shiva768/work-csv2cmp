@@ -19,6 +19,8 @@ final def COL_ID1 = 0
 final def COL_ID3 = 2
 final def FILE_SEPARATOR = System.properties['file.separator']
 final def LINE_SEPARATOR = System.properties['line.separator']
+final
+def TEMPLATE = "},001,,,,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"
 final Charset CHARSET = Charset.defaultCharset()
 
 def path = args[0]
@@ -32,7 +34,7 @@ def line = 0
 println "start ${LocalDateTime.now()}"
 outputFile.withWriter(outputCharset.name()) { writer ->
 
-    inputFile.eachLine(inputCharset.name(), HEADER_ROW) { def it, def lineNum ->
+    inputFile.eachLine(inputCharset.name(), HEADER_ROW) { it, lineNum ->
         if (HEADER_ROW == lineNum) {
             writer << it
             writer << LINE_SEPARATOR
@@ -40,7 +42,7 @@ outputFile.withWriter(outputCharset.name()) { writer ->
         }
         def tokenize = it.tokenize(",")
         if (tokenize.every { it == null || it == "NULL" }) return
-        writer << "$FIX_VAL_HEADER_FIRST_COL,${tokenize.get(COL_ID1)},{${tokenize.get(COL_ID3)}},001,,,,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"
+        writer << "$FIX_VAL_HEADER_FIRST_COL,${tokenize.get(COL_ID1)},{${tokenize.get(COL_ID3)}${TEMPLATE}"
         writer << LINE_SEPARATOR
         line++
         if (line % 100 == 0)
